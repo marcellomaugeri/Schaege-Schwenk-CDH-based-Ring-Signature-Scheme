@@ -1,0 +1,91 @@
+name: Test and release ssringsignaturescheme
+
+on:
+  pull_request:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  test-build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.10', '3.14']
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install native dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential libgmp-dev libssl-dev flex bison pkg-config
+          curl --fail --location https://crypto.stanford.edu/pbc/files/pbc-1.0.0.tar.gz --output "$RUNNER_TEMP/pbc-1.0.0.tar.gz"
+          echo "18275a367283077bafe35f443200499e3b19c4a3754953da2a1b2f0d6b5922dc  $RUNNER_TEMP/pbc-1.0.0.tar.gz" | sha256sum --check
+          tar -xzf "$RUNNER_TEMP/pbc-1.0.0.tar.gz" -C "$RUNNER_TEMP"
+          cd "$RUNNER_TEMP/pbc-1.0.0"
+          ./configure --prefix="$RUNNER_TEMP/pbc"
+          make -j2
+          make install
+          mkdir -p "$RUNNER_TEMP/pbc/bin"
+          ./libtool --mode=install install gen/genaparam gen/geneparam "$RUNNER_TEMP/pbc/bin"
+          echo "$RUNNER_TEMP/pbc/bin" >> "$GITHUB_PATH"
+      - name: Install package and test tools
+        env:
+          CPPFLAGS: -I${{ runner.temp }}/pbc/include
+          LDFLAGS: -L${{ runner.temp }}/pbc/lib -Wl,-rpath,${{ runner.temp }}/pbc/lib
+        run: python -m pip install '.[demo,test]' build twine
+      - name: Run real-backend tests
+        run: python -m pytest
+      - name: Build and check distributions
+        run: |
+          python -m build
+          python -m twine check dist/*
+      - name: Check demonstration from the source archive
+        run: |
+          mkdir -p "$RUNNER_TEMP/source"
+          tar -xzf dist/*.tar.gz -C "$RUNNER_TEMP/source" --strip-components=1
+          cd "$RUNNER_TEMP/source"
+          python -m pytest tests/test_cli.py
+      - name: Check release tag
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          python - <<'PY'
+          import os
+          from importlib.metadata import version
+          expected = 'v' + version('ssringsignaturescheme')
+          if os.environ['RELEASE_TAG'] != expected:
+              raise SystemExit(f'Release tag must be {expected}')
+          PY
+      - name: Check installed wheel outside the checkout
+        run: |
+          python -m pip install --force-reinstall --no-deps dist/*.whl
+          cd "$RUNNER_TEMP"
+          python -I "$GITHUB_WORKSPACE/demo.py" --type a --rbits 160 --qbits 512 --users 3 --signer 2 --message 'Wheel installation'
+          python -I "$GITHUB_WORKSPACE/demo.py" --help
+      - uses: actions/upload-artifact@v7
+        with:
+          name: dist-${{ matrix.python }}
+          path: dist/*
+          if-no-files-found: error
+
+  publish:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: test-build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: dist-3.14
+          path: dist
+      - name: Publish checked distributions
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          password: ${{ secrets.PYPI_API_TOKEN }}
