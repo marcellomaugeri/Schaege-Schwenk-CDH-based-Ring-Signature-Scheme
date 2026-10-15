@@ -1,3 +1,5 @@
+import re
+
 import pytest
 from typer.testing import CliRunner
 
@@ -12,6 +14,7 @@ def pairing_options():
 def test_help():
     result = CliRunner().invoke(app, ["--help"])
     assert result.exit_code == 0
+    help_text = re.sub(r"\x1b\[[0-9;]*m", "", result.stdout)
     for option in (
         "--type",
         "--rbits",
@@ -21,8 +24,8 @@ def test_help():
         "--signer",
         "--message",
     ):
-        assert option in result.stdout
-    assert "--message-length" not in result.stdout
+        assert option in help_text
+    assert "--message-length" not in help_text
 
 
 @pytest.mark.parametrize("hash_name", ["sha256", "sha512"])
