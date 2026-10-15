@@ -70,6 +70,9 @@ export LDFLAGS="-L$VIRTUAL_ENV/native/lib -Wl,-rpath,$VIRTUAL_ENV/native/lib ${L
 python -m pip install '.[demo,test]'
 ```
 
+To install the published library after setting up the native dependencies, run `python -m pip install schaege-schwenk-ring-signature`.
+The source checkout above is needed for `demo.py` and the tests.
+
 ### Run the demonstration
 
 ```bash
@@ -98,7 +101,7 @@ The examples below use SHA-256 to sign an arbitrary-length byte string.
 ### Setup
 
 ```python
-from ssringsignaturescheme import SSRingSignatureScheme
+from schaege_schwenk_ring_signature import SSRingSignatureScheme
 
 scheme = SSRingSignatureScheme.setup(
     pairing_type='a',

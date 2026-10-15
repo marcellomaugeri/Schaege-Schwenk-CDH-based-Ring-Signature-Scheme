@@ -1,4 +1,4 @@
-name: Test and release ssringsignaturescheme
+name: Test and release schaege-schwenk-ring-signature
 
 on:
   pull_request:
@@ -60,7 +60,7 @@ jobs:
           python - <<'PY'
           import os
           from importlib.metadata import version
-          expected = 'v' + version('ssringsignaturescheme')
+          expected = 'v' + version('schaege-schwenk-ring-signature')
           if os.environ['RELEASE_TAG'] != expected:
               raise SystemExit(f'Release tag must be {expected}')
           PY

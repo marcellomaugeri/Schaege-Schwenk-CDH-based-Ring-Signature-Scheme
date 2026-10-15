@@ -7,9 +7,13 @@ import pytest
 from charm.core.math.pairing import G1, ZR, init, order, pair, pairing, random
 from charm.toolbox.pairingcurves import params
 
-from ssringsignaturescheme import PublicParameters, RingSignature, SSRingSignatureScheme
-from ssringsignaturescheme.serialization import decode, read_document
-from ssringsignaturescheme.utils import create_pairing
+from schaege_schwenk_ring_signature import (
+    PublicParameters,
+    RingSignature,
+    SSRingSignatureScheme,
+)
+from schaege_schwenk_ring_signature.serialization import decode, read_document
+from schaege_schwenk_ring_signature.utils import create_pairing
 
 
 @pytest.mark.parametrize("pairing_type,qbits", [("a", 1024), ("e", 1024)])
@@ -249,7 +253,7 @@ def test_invalid_parameter_envelope_never_initialises_native_pairing(
         pytest.fail("Invalid envelope reached native pairing initialisation")
 
     monkeypatch.setattr(
-        "ssringsignaturescheme.ssringsignaturescheme.create_pairing",
+        "schaege_schwenk_ring_signature.scheme.create_pairing",
         reject_native_pairing,
     )
     with pytest.raises(ValueError):
@@ -462,7 +466,8 @@ def test_invalid_element_counts_never_reach_native_decoding(
         pytest.fail("Invalid element count reached native decoding")
 
     monkeypatch.setattr(
-        "ssringsignaturescheme.serialization.deserialize", reject_native_decode
+        "schaege_schwenk_ring_signature.serialization.deserialize",
+        reject_native_decode,
     )
     with pytest.raises(ValueError):
         decode(

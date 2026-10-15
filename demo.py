@@ -2,7 +2,7 @@
 
 import typer
 
-from ssringsignaturescheme import SSRingSignatureScheme
+from schaege_schwenk_ring_signature import SSRingSignatureScheme
 
 app = typer.Typer(add_completion=False)
 
